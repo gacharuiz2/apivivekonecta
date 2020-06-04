@@ -1,0 +1,5 @@
+{
+  "name": "scores de reclutamiento vivekonecta",
+  "description": "API que proporciona los scores de postulantes a las aplicaciones web",
+  "keywords": ["python", "flask", "static"]
+}
