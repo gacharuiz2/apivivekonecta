@@ -40,8 +40,8 @@ def PROCESAMIENTO_DATOS():
     dfdata= pd.DataFrame(data_df2)
     
     ### valor X
-    X=dfdata['X'].values
-    X=X[0]
+    ##X=dfdata['X'].values
+    ##X=X[0]
 
     ### valor fecha_inicio
     date_inicio=dfdata['date_inicio'].values
