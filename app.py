@@ -19,30 +19,22 @@ os.environ['NUMEXPR_MAX_THREADS'] = '16'
 ##########################################################
 #######[1]CONEXION A FIREBASE
 ##########################################################
-firebase = firebase.FirebaseApplication('https://konectase-522d7.firebaseio.com/', None)
+firebase = firebase.FirebaseApplication('https://seleccion-digital.firebaseio.com/', None)
 
 ##########################################################
 #######[4]PREPROCESAMIENTO DE DATOS
 ##########################################################
-
-# app
 app = Flask(__name__)
-# routes
-@app.route('/scores', methods=['POST'])
 
 def PROCESAMIENTO_DATOS():
 ###INGRESO DE REQUEST DESDE WEB
     data=request.get_json(force=True,silent = False , cache = True)
     data = json.dumps(data)
 
-###OBTENIENDO LAS VARIABLES INTRODUCIDAS EN EL REQUEST EN FORMATO JSON.
+    ###OBTENIENDO LAS VARIABLES INTRODUCIDAS EN EL REQUEST EN FORMATO JSON.
     data_df2=pd.read_json(data)##--orient='list'
     dfdata= pd.DataFrame(data_df2)
-    
-    ### valor X
-    ##X=dfdata['X'].values
-    ##X=X[0]
-
+        
     ### valor fecha_inicio
     date_inicio=dfdata['date_inicio'].values
     date_inicio=date_inicio[0]
@@ -114,7 +106,7 @@ def PROCESAMIENTO_DATOS():
 
     grado_formacion=grado
 
-    ###################estado estudios
+        ###################estado estudios
     if estado =='completa':
         estado= 3      
     if estado =='en curso':
@@ -142,23 +134,23 @@ def PROCESAMIENTO_DATOS():
 
     ###################experiencia call
     if ec== 'Si': 
-       Exp_call=5
+        Exp_call=5
     else:
-       Exp_call=0 
+        Exp_call=0 
 
     ###################experiencia otros
     if eo== 'Si': 
-       Exp_otros=3
+        Exp_otros=3
     else:
-       Exp_otros=0 
+        Exp_otros=0 
 
-    ###################sin experiencia
+        ###################sin experiencia
     if se== 'Si': 
-       Sin_Exp=1
+        Sin_Exp=1
     else:
-       Sin_Exp=0 
+        Sin_Exp=0 
 
-    ###################tipo de experiencia
+        ###################tipo de experiencia
     if tipo== 'Atencion': 
         ATC=1
         Ventas=0
@@ -192,8 +184,8 @@ def PROCESAMIENTO_DATOS():
         tiempo= 3
     if tiempo =='[13-mas]':
         tiempo= 1
-    Tiempo_experiencia=tiempo
 
+    Tiempo_experiencia=tiempo
 
     a1=(Edad*0.15)
     b1=((grado_formacion*estado_estudios*rubro_carrera)*0.25)
@@ -239,6 +231,10 @@ def PROCESAMIENTO_DATOS():
     df_Rpostulantes['Fechahoy'] = df_Rpostulantes.Fechahoy.astype('datetime64[ns]')
     #-(9)Calculamos la edad del postulante
     df_Rpostulantes['Edad']=((df_Rpostulantes['Fechahoy']- df_Rpostulantes['fecha_nac']).astype('timedelta64[Y]')).astype(int)
+    df_Rpostulantes = df_Rpostulantes[(df_Rpostulantes['FechaRegistro'] >= pd.Timestamp(date_inicio)) & (df_Rpostulantes['FechaRegistro'] <= pd.Timestamp(date_fin))]
+    fechaa_cruce=DataFrame(df_Rpostulantes[['id_postulante','FechaRegistro']])
+
+    dfexperiencia=pd.merge(dfexperiencia, fechaa_cruce,left_on='id_postulante',right_on='id_postulante')
 
 ###TABLA PROFESIONAL
     #-(1) Tomamos las columnas que nos sirven para la tabla
@@ -246,10 +242,15 @@ def PROCESAMIENTO_DATOS():
     #-(1) Reseteamos los indices
     df_Rprofesional=df_Rprofesional.fillna('Secundaria') 
     df_Rprofesional.reset_index(level=0,inplace=True)
+    df_Rprofesional=pd.merge(df_Rprofesional, fechaa_cruce,left_on='id_postulante',right_on='id_postulante')
+    df_Rprofesional=DataFrame(df_Rprofesional[['index','id_postulante','grado_formacion','estado_estudios','rubro_carrera']])
 
 ###TABLA EXPERIENCIA
     #-(1)Seleccionando columnas para los registros sin experiencia.
     sinexperiencia=DataFrame(dfexperiencia[['id_postulante','flag_se','se_p_ventas','se_p_backof','se_p_redes','se_p_atc']])
+    #sinexperiencia=pd.merge(sinexperiencia, fechaa_cruce,left_on='id_postulante',right_on='id_postulante')
+    #sinexperiencia=DataFrame(sinexperiencia[['id_postulante','flag_se','se_p_ventas','se_p_backof','se_p_redes','se_p_atc']])
+
     #-(2)Le damos valores numericos a las respuestas de la pregunta de ventas
     sinexperiencia['se_p_ventas']=sinexperiencia['se_p_ventas'].replace('A',1)
     sinexperiencia['se_p_ventas']=sinexperiencia['se_p_ventas'].replace('B',1)
@@ -282,9 +283,11 @@ def PROCESAMIENTO_DATOS():
     ### OBTENEMOS LA TABLA SUMARIZADA DE EXPERIENCIA
     #-(1)Seleccionando columnas para los registros con experiencia call.
     dataprev=DataFrame(dfexperiencia[['id_postulante','flag_ec','ec_segmento','ec_tiempo_exp']])
+    #dataprev=pd.merge(dataprev, fechaa_cruce,left_on='id_postulante',right_on='id_postulante')
+    #dataprev=DataFrame(sinexperiencia[['id_postulante','flag_ec','ec_segmento','ec_tiempo_exp']])
+
     #-(2) Filtramos los datos que tienen experiencia en call
     dataprev= dataprev[dataprev['flag_ec']==1]
-
 
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 #----------///////////////////////////////////////////////////////////////////////////////////////////LIMPIEZA DE DATOS(ELIMINAR CUANDO EL PROCESO ESTE CORRECTO)
@@ -303,7 +306,6 @@ def PROCESAMIENTO_DATOS():
     dataprev['ec_tiempo_exp'] = dataprev['ec_tiempo_exp'] .fillna(0)
 #----------///////////////////////////////////////////////////////////////////////////////////////////LIMPIEZA DE DATOS(ELIMINAR CUANDO EL PROCESO ESTE CORRECTO)
 #---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
-
 
     #-(3) La variable tiempo de experiencia en call la convertimos en entera (numerica)
     dataprev['ec_tiempo_exp']=dataprev['ec_tiempo_exp'].astype(int)
@@ -328,6 +330,8 @@ def PROCESAMIENTO_DATOS():
     conexperienciacall=pd.merge(union2, dataprev2,left_on='id_postulante',right_on='id_postulante')
     ### OBTENEMOS LA TABLA SUMARIZADA DE EXPERIENCIA
     #-(1)Seleccionando columnas para los registros con experiencia call.
+    
+    
     datapreveo=DataFrame(dfexperiencia[['id_postulante','flag_eo','eo_puesto','eo_tiempo_exp']])
     #-(2) Filtramos los datos que tienen experiencia en call
     datapreveo= datapreveo[datapreveo['flag_eo']==1]
@@ -529,7 +533,7 @@ def PROCESAMIENTO_DATOS():
     Z.columns = ['ICP']
     # ## **PASO 5**:* Revisión de tabla final* 
     final=pd.merge(tablonperfil2,Z,left_index=True,right_index=True)
-    final = final[(final['FechaRegistro'] >= pd.Timestamp(date_inicio)) & (final['FechaRegistro'] <= pd.Timestamp(date_fin))]
+    #final = final[(final['FechaRegistro'] >= pd.Timestamp(date_inicio)) & (final['FechaRegistro'] <= pd.Timestamp(date_fin))]
     
 ##CALCULAR SUELDO Y VARIABLES
     Calulosueldo=DataFrame(dfexperiencia[['id_postulante','eo_retribucion_basico', 'ec_retribucion_basico']])
@@ -622,9 +626,159 @@ def PROCESAMIENTO_DATOS():
 
 ##CALCULO FINAL FINAL - AHORA SI
     Final_Final_2=pd.merge(final,rotacionfinal,left_on='id_postulante',right_on='id_postulante',how='left')
-    Final_Final_2=DataFrame(Final_Final_2[[ 'id_postulante','numdoc','Edad','grado_formacion','estado_estudios','rubro_carrera','flag_ec','flag_eo','flag_se','estado_civil','genero','n_hijos','sueldo','ICP','IPR']])
-    Final_Final_3=Final_Final_2.to_json(orient='split')
-    return(Final_Final_3)
+    Final_Final_2=DataFrame(Final_Final_2[[ 'id_postulante','FechaRegistro','ICP','IPR']])
+    return(Final_Final_2)
+
+# routes
+@app.route('/scores', methods=['POST'])
+def SCORES():
+    data=request.get_json(force=True,silent = False , cache = True)
+    data = json.dumps(data)   
+    scores=PROCESAMIENTO_DATOS()
+    scores=scores.to_json(orient='split')
+    return(scores)
+
+@app.route('/experiencia', methods=['POST'])
+def EXPERIENCIA():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    experiencia= firebase.get('/DATOS_EXPERIENCIA', None)
+    experiencia=json.dumps(experiencia)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_experiencia=json.loads(experiencia)
+    dfexperiencia = DataFrame(data_experiencia).T
+    dfexperiencia.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfexperiencia,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+
+@app.route('/familiares', methods=['POST'])
+def FAMILIARES():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    familiares= firebase.get('/DATOS_FAMILIARES', None)
+    familiares=json.dumps(familiares)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_familiares=json.loads(familiares)
+    dffamiliares = DataFrame(data_familiares).T
+    dffamiliares.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dffamiliares,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+
+@app.route('/profesional', methods=['POST'])
+def PROFESIONAL():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    profesional= firebase.get('/DATOS_PROFESIONALES', None)
+    profesional=json.dumps(profesional)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_profesional=json.loads(profesional)
+    dfprofesional = DataFrame(data_profesional).T
+    dfprofesional.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfprofesional,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/rotacion', methods=['POST'])
+def ROTACION():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    rotacion= firebase.get('/DATOS_ROTACION', None)
+    rotacion=json.dumps(rotacion)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_rotacion=json.loads(rotacion)
+    dfrotacion = DataFrame(data_rotacion).T
+    dfrotacion.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfrotacion,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/postulantes', methods=['POST'])
+def POSTULANTES():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    postulantes= firebase.get('/POSTULANTES', None)
+    postulantes=json.dumps(postulantes)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_postulantes=json.loads(postulantes)
+    dfpostulantes= DataFrame(data_postulantes).T
+    dfpostulantes.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfpostulantes,left_on='id_postulante',right_on='index')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/psicologicos', methods=['POST'])
+def PSICOLOGICOS():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    psicologicos= firebase.get('/DATOS_PSICOLOGOS', None)
+    psicologicos=json.dumps(psicologicos)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_psicologicos=json.loads(psicologicos)
+    dfpsicologicos= DataFrame(data_psicologicos).T
+    dfpsicologicos.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfpsicologicos,left_on='id_postulante',right_on='index')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/entrevista', methods=['POST'])
+def ENTREVISTA():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    entrevista= firebase.get('/ENTREVISTA_PROGRAMADA', None)
+    entrevista=json.dumps(entrevista)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_entrevista=json.loads(entrevista)
+    dfentrevista= DataFrame(data_entrevista).T
+    dfentrevista.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfentrevista,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/tecnica', methods=['POST'])
+def TECNICA():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    tecnica= firebase.get('/ESPECIFICACION_TECNICA', None)
+    tecnica=json.dumps(tecnica)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_tecnica=json.loads(tecnica)
+    dftecnica= DataFrame(data_tecnica).T
+    dftecnica.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dftecnica,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/evaluacion', methods=['POST'])
+def EVALUACION():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    evaluacion= firebase.get('/EVALUACION_PROGRAMADA', None)
+    evaluacion=json.dumps(evaluacion)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_evaluacion=json.loads(evaluacion)
+    dfevaluacion= DataFrame(data_evaluacion).T
+    dfevaluacion.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfevaluacion,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
+
+@app.route('/ubicacion', methods=['POST'])
+def UBICACION():
+    scores=PROCESAMIENTO_DATOS()
+    ### OBTENEMOS JSON EXPERIENCIA
+    ubicacion= firebase.get('/UBICACION_INICIAL', None)
+    ubicacion=json.dumps(ubicacion)
+    ###CONVERTIMOS JSON A DATAFRAME
+    data_ubicacion=json.loads(ubicacion)
+    dfubicacion= DataFrame(data_ubicacion).T
+    dfubicacion.reset_index(level=0,inplace=True)
+    resultado=pd.merge(scores, dfubicacion,left_on='id_postulante',right_on='id_postulante')
+    resultado=resultado.to_json(orient='split')
+    return(resultado)
 
 
 if __name__ == '__main__':
