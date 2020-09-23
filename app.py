@@ -32,7 +32,7 @@ def PROCESAMIENTO_DATOS(data):
     #data = json.dumps(data)
 
     ###OBTENIENDO LAS VARIABLES INTRODUCIDAS EN EL REQUEST EN FORMATO JSON.
-    data_df2=pd.read_json(data,orient='list')##--orient='list'
+    data_df2=pd.read_json(data)##--orient='list'
     dfdata= pd.DataFrame(data_df2)
         
     ### valor fecha_inicio
