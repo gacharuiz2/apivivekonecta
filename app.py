@@ -26,13 +26,13 @@ firebase = firebase.FirebaseApplication('https://seleccion-digital.firebaseio.co
 ##########################################################
 app = Flask(__name__)
 
-def PROCESAMIENTO_DATOS():
+def PROCESAMIENTO_DATOS(data):
 ###INGRESO DE REQUEST DESDE WEB
-    data=request.get_json(force=True,silent = False , cache = True)
-    data = json.dumps(data)
+    #data=request.get_json(force=True,silent = False , cache = True)
+    #data = json.dumps(data)
 
     ###OBTENIENDO LAS VARIABLES INTRODUCIDAS EN EL REQUEST EN FORMATO JSON.
-    data_df2=pd.read_json(data)##--orient='list'
+    data_df2=pd.read_json(data,orient='list')##--orient='list'
     dfdata= pd.DataFrame(data_df2)
         
     ### valor fecha_inicio
